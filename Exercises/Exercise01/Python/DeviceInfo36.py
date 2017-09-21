@@ -30,6 +30,21 @@ for p in platforms:
     print("Number of services", len(devices))
 
     # Investigate each device:
+    for d in devices:
+        print("\t---------------------------")
+        # Print some information about the devices.
+        print("\t\tName: ", d.name)
+        print("\t\tVersion: ", d.version)
+        print("\t\tMaximum compute units: ", d.max_compute_units)
+        print("\t\tLocal memory size: ", d.local_mem_size/1024, "KB")
+        print("\t\tGlobal memory size: ", d.global_mem_size/(1024**2), "MB")
+        print("\t\tMax alloc size: ", d.max_mem_alloc_size/(1024**2), "MB")
+        print("\t\tMax work group total size: ", d.max_work_group_size)
 
+        # Find the maximum dimensions of the work group.
+        dim = d.max_work_item_sizes
+        print("\t\tMax work group dims: ", dim[0], " ".join(map(str, dim[1:])), ")")
 
+        print("\t---------------------------")
 
+    print("\n---------------------------")
