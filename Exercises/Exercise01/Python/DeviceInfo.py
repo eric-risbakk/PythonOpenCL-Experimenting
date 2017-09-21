@@ -48,3 +48,5 @@ for p in platforms:
         print "\t-------------------------"
 
     print "\n-------------------------"
+
+    # New line.
