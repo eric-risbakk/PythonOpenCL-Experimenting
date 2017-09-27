@@ -10,6 +10,7 @@
 import pyopencl as cl
 import sys
 
+
 def output_device_info(device_id):
     sys.stdout.write("Device is ")
     sys.stdout.write(device_id.name)
