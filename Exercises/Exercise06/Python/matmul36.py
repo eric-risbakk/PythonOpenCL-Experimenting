@@ -94,6 +94,7 @@ mmul.set_scalar_arg_dtypes([numpy.int32, None, None, None])
 
 print("\n===== OpenCL, matrix mult, C(i,j) per work item, order", N, "======\n")
 
+
 # Do the multiplication COUNT times
 for i in range(COUNT):
     h_C.fill(0.0)
