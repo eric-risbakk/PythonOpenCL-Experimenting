@@ -31,9 +31,9 @@ __kernel void mmul(
 	__global float* C)
 {
     int i, j, k;
-    float tmp = 0.0f
-    i = get_global_id(0)
-    j = get_global_id(1)
+    float tmp = 0.0f;
+    i = get_global_id(0);
+    j = get_global_id(1);
     for (k = 0; k < N; ++k) {
         tmp += A[i*N+k] * B[k*N+j];
     }
@@ -66,10 +66,10 @@ for i in range(COUNT):
     start_time = time()
 
     print("Skipping as this takes a long time to run!")
-    seq_mat_mul_sdot(N, h_A, h_B, h_C)
+    # seq_mat_mul_sdot(N, h_A, h_B, h_C)
 
     run_time = time() - start_time
-    results(N, h_C, run_time)
+    # results(N, h_C, run_time)
 
 
 # Set up OpenCL
