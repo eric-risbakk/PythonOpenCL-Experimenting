@@ -35,20 +35,28 @@ LENGTH = 1024
 # Input: a and b float vectors of length count
 # Output c float vector of length count holding the sum a + b
 
-kernelsource = """
-__kernel void vadd(
-    __global float* a,
-    __global float* b,
-    __global float* c,
+kernel_source = """
+__kernel void vadd_b(
+    __global float* n0,
+    __global float* n1,
+    __global float* n2,
+    __global float* n3,
+    __global float* out0,
     const unsigned int count)
-{
+    {
+    
+        float t0, t1;
     int i = get_global_id(0);
-    if (i < count)
-        c[i] = a[i] + b[i];
+    if (i < count) 
+    {
+        t0 = n0[i] + n1[i];
+        t1 = t0 + n2[i];
+        out0[i] = t1 + n3[i];
+    }
 }
 """
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 # Main procedure
 
@@ -62,51 +70,59 @@ deviceinfo.output_device_info(context.devices[0])
 # Create a command queue
 queue = cl.CommandQueue(context)
 
+print("Starting to build program.")
+
 # Create the compute program from the source buffer
 # and build it
-program = cl.Program(context, kernelsource).build()
+program = cl.Program(context, kernel_source).build()
+
+print("Program built!")
 
 # Create a and b vectors and fill with random float values
-h_a = numpy.random.rand(LENGTH).astype(numpy.float32)
-h_b = numpy.random.rand(LENGTH).astype(numpy.float32)
+h_n0 = numpy.random.rand(LENGTH).astype(numpy.float32)
+h_n1 = numpy.random.rand(LENGTH).astype(numpy.float32)
+h_n2 = numpy.random.rand(LENGTH).astype(numpy.float32)
+h_n3 = numpy.random.rand(LENGTH).astype(numpy.float32)
 # Create an empty c vector (a+b) to be returned from the compute device
-h_c = numpy.empty(LENGTH).astype(numpy.float32)
+h_out0 = numpy.empty(LENGTH).astype(numpy.float32)
 
 # Create the input (a, b) arrays in device memory and copy data from host
-d_a = cl.Buffer(context, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, hostbuf=h_a)
-d_b = cl.Buffer(context, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, hostbuf=h_b)
+d_n0 = cl.Buffer(context, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, hostbuf=h_n0)
+d_n1 = cl.Buffer(context, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, hostbuf=h_n1)
+d_n2 = cl.Buffer(context, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, hostbuf=h_n2)
+d_n3 = cl.Buffer(context, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, hostbuf=h_n3)
 # Create the output (c) array in device memory
-d_c = cl.Buffer(context, cl.mem_flags.WRITE_ONLY, h_c.nbytes)
+d_out0 = cl.Buffer(context, cl.mem_flags.WRITE_ONLY, h_out0.nbytes)
 
 # Start the timer
-rtime = time()
+r_time = time()
 
 # Execute the kernel over the entire range of our 1d input
 # allowing OpenCL runtime to select the work group items for the device
-vadd = program.vadd
-vadd.set_scalar_arg_dtypes([None, None, None, numpy.uint32])
-vadd(queue, h_a.shape, None, d_a, d_b, d_c, LENGTH)
+vadd = program.vadd_b
+vadd.set_scalar_arg_dtypes([None, None, None, None, None, numpy.uint32])
+vadd(queue, h_n0.shape, None, d_n0, d_n1, d_n2, d_n3, d_out0, LENGTH)
 
 # Wait for the commands to finish before reading back
 queue.finish()
-rtime = time() - rtime
-print "The kernel ran in", rtime, "seconds"
+r_time = time() - r_time
+print("The kernel ran in", r_time, "seconds")
 
 # Read back the results from the compute device
-cl.enqueue_copy(queue, h_c, d_c)
+cl.enqueue_copy(queue, h_out0, d_out0)
 
 # Test the results
-correct = 0;
-for a, b, c in zip(h_a, h_b, h_c):
+correct1 = 0
+for a, b, c, d, e in zip(h_n0, h_n1, h_n2, h_n3, h_out0):
     # assign element i of a+b to tmp
-    tmp = a + b
+    tmp = a + b + c + d
     # compute the deviation of expected and output result
-    tmp -= c
+    tmp -= e
     # correct if square deviation is less than tolerance squared
     if tmp*tmp < TOL*TOL:
-        correct += 1
+        correct1 += 1
     else:
-        print "tmp", tmp, "h_a", a, "h_b", b, "h_c", c
+        print("tmp", tmp, "h_a", a, "h_b", b, "h_c", c)
 
 # Summarize results
-print "C = A+B:", correct, "out of", LENGTH, "results were correct."
+print("E = A+B+C+D :", correct1, "out of", LENGTH, "results were correct.")
