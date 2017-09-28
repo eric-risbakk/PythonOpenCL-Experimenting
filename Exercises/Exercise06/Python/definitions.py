@@ -2,10 +2,10 @@
 # Order of the square matrices A, B and C
 ORDER = 1024
 
-# A elemetns are constant and equal to AVAL
+# A elements are constant and equal to AVAL
 AVAL = 3.0
 
-# B elemetns are constant and equal to BVAL
+# B elements are constant and equal to BVAL
 BVAL = 5.0
 
 # tolerance used in floating point comparisons
