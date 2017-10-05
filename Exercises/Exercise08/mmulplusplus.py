@@ -1,6 +1,5 @@
 #
-# Matrix Multiplication Driver, with attempt at optimization.
-# For my personal computer, this actually slows it down! The original (mmulplusplus.py) is much faster.
+# Matrix Multiplication Driver
 #
 # This is a driver program to test various ways of computing
 # the product:
@@ -20,7 +19,6 @@
 from helper import *
 from definitions import *
 
-
 import pyopencl as cl
 import numpy
 from time import time
@@ -30,12 +28,17 @@ __kernel void mmul(
     const int N,
     __global float *A,
     __global float *B,
-    __global float *C)
+    __global float *C,
+    __local float *Bwrk)    
 {
     int j, k;
     int i = get_global_id(0);
-    float tmp;
     
+    int iloc = get_local_id(0);
+    
+    int nloc = get_local_size(0);
+    
+    float tmp;
     float Awrk[1024];
     
     for (k = 0; k < N; ++k) {
@@ -43,11 +46,21 @@ __kernel void mmul(
     }
     
     for (j = 0; j < N; ++j) {
+    
+        for (k = iloc; k < N; k+=nloc) {
+            Bwrk[k] = B[k*N + j];
+        }
+    
+        barrier(CLK_LOCAL_MEM_FENCE);
+    
         tmp = 0.0f;
         for (k = 0; k < N; ++k) {
-            tmp += Awrk[k] * B[k*N+j];
+            tmp += Awrk[k]*B[k];
         }
+        
         C[i*N+j] = tmp;
+        
+        barrier(CLK_LOCAL_MEM_FENCE);
     }
 }
 '''
@@ -69,6 +82,9 @@ h_B.fill(BVAL)
 
 # C matrix
 h_C = numpy.empty(size).astype(numpy.float32)
+
+# Local B column size.
+localmem = cl.LocalMemory(numpy.dtype(numpy.float32).itemsize * N)
 
 print("\n===== Sequential, matrix mult (dot prod), order", ORDER, "on host CPU ======\n")
 
@@ -101,7 +117,7 @@ d_c = cl.Buffer(context, cl.mem_flags.WRITE_ONLY, h_C.nbytes)
 
 program = cl.Program(context, C_elem_KernelSource).build()
 mmul = program.mmul
-mmul.set_scalar_arg_dtypes([numpy.int32, None, None, None])
+mmul.set_scalar_arg_dtypes([numpy.int32, None, None, None, None])
 
 print("\n===== OpenCL, matrix mult, C(i,j) per work item, order", N, "======\n")
 
@@ -112,9 +128,9 @@ for i in range(COUNT):
     start_time = time()
 
     globalrange = (N, 1)
-    localrange = None
+    localrange = ((ORDER/16),)
 
-    mmul(queue, globalrange, localrange, N, d_a, d_b, d_c)
+    mmul(queue, globalrange, localrange, N, d_a, d_b, d_c, localmem)
     queue.finish()
 
     run_time = time() - start_time
